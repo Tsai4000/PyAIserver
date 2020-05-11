@@ -27,10 +27,10 @@ def predict(inpImg):
     img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
     matrix = cv2.resize(img, (28, 28), interpolation=cv2.INTER_CUBIC)
     matrix = matrix.reshape(-1, 28, 28, 1)
-    print(model.predict(matrix).argmax())
-   
-    return model.predict(matrix).argmax()
-
+    predictList = model.predict(matrix)
+    print(predictList)
+    result = predictList.argmax()
+    return result, predictList[0][result]
 # result = model.predict(testdf)
 # a = np.array(result).astype(np.int)
 # testGuess = np.argmax(a, axis=1)

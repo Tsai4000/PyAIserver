@@ -26,8 +26,8 @@ def home():
 @app.route('/predict', methods=['POST'])
 def bPredict():
     # print(request.form["icon"][22:], file=sys.stderr)
-    result = predict(request.form["icon"][22:])
-    return jsonify({"result": str(result)})
+    result, perc = predict(request.form["icon"][22:])
+    return jsonify({"result": str(result), "perc": str(perc)})
 
 initDB()
-app.run(port=5000, debug=True)
+app.run(host='0.0.0.0', port=5000, debug=True)
