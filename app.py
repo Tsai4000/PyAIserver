@@ -1,6 +1,6 @@
 import pymongo
 import sys
-sys.path.insert(1, './AIutil')
+sys.path.insert(1, './AIutil/kannada')
 
 from pyAI import *
 from flask import Flask, jsonify, request, render_template, make_response

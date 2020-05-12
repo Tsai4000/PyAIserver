@@ -18,7 +18,7 @@ from PIL import Image
 # tf.disable_v2_behavior() 
 
 def predict(inpImg):
-    model = load_model('./AIutil/weight/weit.h5', compile=True)
+    model = load_model('./AIutil/kannada/weight/weit.h5', compile=True)
     model.compile(optimizer = 'adam', loss = 'mean_squared_error', metrics = ['accuracy'])
 
     imgdata = base64.b64decode(inpImg)
