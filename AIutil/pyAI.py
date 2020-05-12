@@ -22,8 +22,8 @@ def predict(inpImg):
     model.compile(optimizer = 'adam', loss = 'mean_squared_error', metrics = ['accuracy'])
 
     imgdata = base64.b64decode(inpImg)
-    img_array = np.fromstring(imgdata, np.uint8) # 轉換np序列
-    img = cv2.imdecode(img_array, cv2.COLOR_BGR2RGB)  # 轉換Opencv格式
+    img_array = np.fromstring(imgdata, np.uint8)
+    img = cv2.imdecode(img_array, cv2.COLOR_BGR2RGB)
     img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
     matrix = cv2.resize(img, (28, 28), interpolation=cv2.INTER_CUBIC)
     matrix = matrix.reshape(-1, 28, 28, 1)
@@ -31,6 +31,8 @@ def predict(inpImg):
     print(predictList)
     result = predictList.argmax()
     return result, predictList[0][result]
+
+
 # result = model.predict(testdf)
 # a = np.array(result).astype(np.int)
 # testGuess = np.argmax(a, axis=1)

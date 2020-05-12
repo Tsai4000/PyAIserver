@@ -5,9 +5,6 @@
     <script>
 
         function post(path, params, method='post') {
-
-            // The rest of this code assumes you are not using a library.
-            // It can be made less wordy if you use one.
             const form = document.createElement('form');
             form.method = method;
             form.action = path;
@@ -24,11 +21,10 @@
             }
 
             document.body.appendChild(form);
-            form.submit();
+            console.log(form.submit())
         }
 
         async function handleUpload(e) {
-            // STEP 2: 得到該檔案的 Blob, i.e., e.target.files
             const arrayBuffer = await getArrayBuffer(e[0]);
             console.log('arrayBuffer', arrayBuffer);
 
@@ -36,9 +32,22 @@
             console.log('response', response);
         }
 
+        async function handleCanvasUpload() {
+            const arrayBuffer = await getCanvasURL();
+            console.log('arrayBuffer', arrayBuffer);
+
+            const response = await uploadFile(arrayBuffer);
+            console.log('response', response);
+        }
+
+        function getCanvasURL() {
+            var canvas=document.getElementById("myCanvas")
+            console.log(canvas.toDataURL("image/png"))
+            return canvas.toDataURL("image/png")
+        }
+
         function getArrayBuffer(file) {
             return new Promise((resolve, reject) => {
-                // STEP 3: 轉成 ArrayBuffer, i.e., reader.result
                 const reader = new FileReader();
                 reader.addEventListener('load', () => {
                     resolve(reader.result);
@@ -48,42 +57,116 @@
         }
 
         function uploadFile(arrayBuffer) {
-            // var str = String.fromCharCode.apply(null, new Uint8Array(arrayBuffer));
-            console.log(arrayBuffer)
-            // bs64 = 'data:image/jpg;base64,' + btoa(str);
-            return post('http://127.0.0.1:5000/predict', {
-                    appId: 3,
+            var result = document.getElementById("result")
+            fetch(`${window.origin}/predict` ,{
+                method:'POST',
+                body:JSON.stringify({
                     format: 'png',
-                        
-                    // STEP 4：轉成 Uint8Array（這是 TypedArray）
-                    // STEP 5：透過 Array.from 轉成真正的陣列
                     icon: arrayBuffer,
-                })
-            
-            // fetch(`http://127.0.0.1:5000/predict`, {
-            //     method: 'POST',
-            //     contentType: 'application/json',
-            //     dataType : 'json',
-            //     // STEP 6：使用 JSON.stringify() 包起來送出
-            //     data: JSON.stringify({
-            //         appId: 3,
-            //         format: 'png',
-                        
-            //         // STEP 4：轉成 Uint8Array（這是 TypedArray）
-            //         // STEP 5：透過 Array.from 轉成真正的陣列
-            //         icon: Array.from(new Uint8Array(arrayBuffer)),
-            //     }),
-            // }).then((res)=> {
-            //     if (!res.ok) {
-            //         throw res.statusText;
-            //     }
-            //     return res.json()
-            // })
-            // .then(({ data }) => console.log('data', data))
-            // .catch(err => console.log('err', err))
+                }),
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            }).then(res => {
+                return res.json()
+            }).then(response => {
+                result.textContent = `result: ${response.result}, accuracy: ${response.perc}`
+            })
         }
+
+        function mouseDown(e){
+            this.draw=true;
+            this.ctx = this.getContext("2d");
+            this.ctx.strokeStyle='#ffffff';
+            this.ctx.lineWidth=10;
+
+            var o=this;
+            this.offsetX=this.offsetLeft;
+            this.offsetY=this.offsetTop;
+
+            while(o.offsetParent){
+                o=o.offsetParent;
+                this.offsetX+=o.offsetLeft;
+                this.offsetY+=o.offsetTop;
+            }
+
+            this.ctx.beginPath();
+            this.ctx.moveTo(e.pageX-this.offsetX,e.pageY-this.offsetY);
+        }
+
+        function mouseMove(e){
+            if (this.draw){
+                this.ctx.lineTo(e.pageX-this.offsetX,e.pageY-this.offsetY);
+                this.ctx.stroke();
+            }
+        }
+
+        function mouseUp(e){
+            this.draw=false;
+        }
+
+        function touchStart(e){
+            this.draw=true;
+            this.ctx=this.getContext("2d");
+            this.touch=e.targetTouches[0];
+            this.ctx.strokeStyle='#ffffff';
+            this.ctx.lineWidth=10;
+
+            var o=this;
+            this.offsetX=this.offsetLeft;
+            this.offsetY=this.offsetTop;
+
+            while(o.offsetParent){
+                o=o.offsetParent;
+                this.offsetX+=o.offsetLeft;
+                this.offsetY+=o.offsetTop;
+            }
+
+            this.ctx.beginPath();
+            this.ctx.moveTo(this.touch.pageX-this.offsetX,this.touch.pageY-this.offsetY);
+            e.preventDefault();
+        }
+
+        function touchMove(e){
+            this.touch=e.targetTouches[0];
+            if (this.draw){
+                this.ctx.lineTo(this.touch.pageX-this.offsetX,this.touch.pageY-this.offsetY);
+                this.ctx.stroke();
+            }
+            e.preventDefault();
+        }
+
+        function touchEnd(e){
+            this.draw=false;
+            e.preventDefault();
+        }
+
+        function clearPad(){
+            var canvas=document.querySelector('#myCanvas');
+            var ctx=canvas.getContext("2d");
+            ctx.fillRect(0,0,canvas.width,canvas.height);
+        }
+
+        window.addEventListener('load',function(){
+            var canvas=document.querySelector('#myCanvas');
+
+            canvas.addEventListener('mousedown',mouseDown);
+            canvas.addEventListener('mousemove',mouseMove);
+            canvas.addEventListener('mouseup',mouseUp);
+
+            canvas.addEventListener('touchstart',touchStart);
+            canvas.addEventListener('touchmove',touchMove);
+            canvas.addEventListener('touchend',touchEnd);
+        });
     </script>
-    <body>
+    <body onload="clearPad()">
+        <img style="height: 400; width: 400;"src="https://st3.depositphotos.com/1963585/15820/v/1600/depositphotos_158203982-stock-illustration-set-of-monochrome-icons-with.jpg">
         <input type="file" onchange="handleUpload(this.files)">
+        <div>
+            <canvas id="myCanvas" width="360" height="360" style="border:#000 1px solid;"></canvas>
+            <button id="finish" onclick="handleCanvasUpload()">finish</button>
+            <button id="reset" onclick="clearPad()">reset</button>
+        </div>
+        <div id="result">result</div>
     </body>
 </html>

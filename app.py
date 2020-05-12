@@ -3,7 +3,7 @@ import sys
 sys.path.insert(1, './AIutil')
 
 from pyAI import *
-from flask import Flask, jsonify, request, render_template
+from flask import Flask, jsonify, request, render_template, make_response
 
 app = Flask(__name__)
 
@@ -15,7 +15,7 @@ def initDB():
         print("已存在！")
         mydb = myclient['pyAI']
         collist = mydb.list_collection_names()
-        if "NN" in collist:   # 判断 sites 集合是否存在
+        if "NN" in collist:  
             print("集合已存在！")
     print("mongo init success")
 
@@ -25,9 +25,9 @@ def home():
 
 @app.route('/predict', methods=['POST'])
 def bPredict():
-    # print(request.form["icon"][22:], file=sys.stderr)
-    result, perc = predict(request.form["icon"][22:])
-    return jsonify({"result": str(result), "perc": str(perc)})
+    # print(request.get_json(), file=sys.stderr)
+    result, perc = predict(request.get_json()["icon"][22:])
+    return make_response(jsonify({"result": str(result), "perc": str(perc)}), 200)
 
 initDB()
 app.run(host='0.0.0.0', port=5000, debug=True)
