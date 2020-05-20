@@ -19,28 +19,16 @@ from PIL import Image
 
 def predict(inpImg):
     model = load_model('./AIutil/kannada/weight/weit.h5', compile=True)
+    n, x, y, t = model.get_config()['layers'][0]['config']['batch_input_shape']
     model.compile(optimizer = 'adam', loss = 'mean_squared_error', metrics = ['accuracy'])
 
     imgdata = base64.b64decode(inpImg)
     img_array = np.fromstring(imgdata, np.uint8)
     img = cv2.imdecode(img_array, cv2.COLOR_BGR2RGB)
     img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-    matrix = cv2.resize(img, (28, 28), interpolation=cv2.INTER_CUBIC)
-    matrix = matrix.reshape(-1, 28, 28, 1)
+    matrix = cv2.resize(img, (x, y), interpolation=cv2.INTER_CUBIC)
+    matrix = matrix.reshape(-1, x, y, t)
     predictList = model.predict(matrix)
     print(predictList)
     result = predictList.argmax()
     return result, predictList[0][result]
-
-
-# result = model.predict(testdf)
-# a = np.array(result).astype(np.int)
-# testGuess = np.argmax(a, axis=1)
-# with open('submission.csv', 'w', newline='') as csvfile:
-#     writer = csv.writer(csvfile)
-#     writer.writerow(["id", "label"])
-#     aa=testGuess.tolist()
-# #     writer.writerow(range(len(aa)), aa)
-#     for index in range(len(aa)):
-# #         print(index, aa[index])
-#         writer.writerow([index, aa[index]])
