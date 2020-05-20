@@ -93,28 +93,28 @@ def pGene():
     else:
         return make_response(jsonify({"index": -1}), 200)
 
-@app.route('/createLog', methods=['GET'])
-def sss():
-    global myclient
-    myclient['dbtSnake']['geneLog'].insert_one({"generation":0})
+# @app.route('/createLog', methods=['GET'])
+# def sss():
+#     global myclient
+#     myclient['dbtSnake']['geneLog'].insert_one({"generation":0})
 
-@app.route('/create', methods=['GET'])
-def ggg():
-    global myclient
-    sol_per_pop = 50
-    num_weights = 9*12+12*16+16*3
+# @app.route('/create', methods=['GET'])
+# def ggg():
+#     global myclient
+#     sol_per_pop = 50
+#     num_weights = 9*12+12*16+16*3
 
-    # Defining the population size.
-    pop_size = (sol_per_pop,num_weights)
-    #Creating the initial population.
-    new_population = np.random.choice(np.arange(-1,1,step=0.01),size=pop_size,replace=True)
-    for index, pop in enumerate(new_population):
-        ge = {
-            "weightIndex": index,
-            "weight": pop.astype(float).tolist(),
-            "score": -5000
-        }
-        myclient['dbtSnake']['geneWeight'].insert_one(ge)
+#     # Defining the population size.
+#     pop_size = (sol_per_pop,num_weights)
+#     #Creating the initial population.
+#     new_population = np.random.choice(np.arange(-1,1,step=0.01),size=pop_size,replace=True)
+#     for index, pop in enumerate(new_population):
+#         ge = {
+#             "weightIndex": index,
+#             "weight": pop.astype(float).tolist(),
+#             "score": -5000
+#         }
+#         myclient['dbtSnake']['geneWeight'].insert_one(ge)
 
 
 initDB()
