@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <meta http-equiv="X-UA-Compatible" content="ie=edge" />
+        <title>Snake</title>
+    </head>
+    <body>
+        <canvas id="canvas" width="500" height="500"></canvas>
+        <div id="score">score: </div>
+        <br/>
+        <button id="start" onclick="onClickStart()">start</button>
+        <button id="reset" onclick="onClickReset()">reset</button>
+        <div id="state">config: </div>
+        <script src="https://cdn.jsdelivr.net/gh/nicolaspanel/numjs@0.15.1/dist/numjs.min.js"></script>
+        <script src="https://cdn.bootcdn.net/ajax/libs/mathjs/7.0.0/math.min.js" type="text/javascript"></script>
+        <script>
+            var canvas, ctx;
+            var gameClock, overClock, gameState=0;
+            var weight;
+            var w1, w2, w3
+            var appleAngle
+            var isfb, islb, isrb
+            var lw,rw,uw,dw
+            var appleDistance
+            var appleCount
+            var score
+            var popIndex, generation
+            var MAX_STEP = 1800, stepCount = 0
+            var autoClock
+
+            window.onload = function() {
+                canvas = document.getElementById("canvas");
+                ctx = canvas.getContext("2d");
+
+                // document.addEventListener("keydown", keyDownEvent);
+
+                // render X times per second
+                gameState=0;
+                appleAngle=0
+                isfb=0
+                islb=0 
+                isrb=0
+                lw=0
+                rw=0
+                uw=0
+                dw=0
+                appleDistance=0
+                appleCount=0
+                gameClock = setInterval(draw, 1000 / 30);
+            };
+
+            // game world
+            var tileSize = 10
+            var gridSize = 50
+            var nextX = (nextY = 0);
+
+            // snake
+            var defaultTailSize = 3;
+            var tailSize = defaultTailSize;
+            var snakeTrail = [];
+            var snakeX = (snakeY = 10);
+
+            // apple
+            var appleX = Math.floor(Math.random() * gridSize);
+            var appleY = Math.floor(Math.random() * gridSize);
+
+            function timeOut(){
+                // score+=3000
+                // gameStop()
+            }
+
+            function postResult(){
+                if(gameState==1){
+                    fetch(`${window.origin}/snake/gene` ,{
+                        method:'POST',
+                        body:JSON.stringify({
+                            index: popIndex,
+                            score: score,
+                            generation: generation
+                        }),
+                        headers: {
+                            'Content-Type': 'application/json'
+                        }
+                    }).then(res => {
+                        return res.json()
+                    }).then(result => {
+                        document.getElementById('score').textContent = result.result
+                        autoStrat()
+                    })
+                }
+            }
+
+            function gameStop(){
+                postResult()
+                gameState=3
+                clearInterval(gameClock);
+                clearInterval(overClock)
+                console.log(appleCount, score)
+                appleCount = 0
+                score = 0
+            }
+
+            function getSnakeInput() {
+                appleDistance = Math.sqrt(Math.pow((snakeX-appleX),2)+Math.pow((snakeY-appleY),2))
+                lw = snakeX/gridSize
+                rw = (gridSize-snakeX)/gridSize
+                uw =  snakeY/gridSize
+                dw = (gridSize - snakeY)/gridSize
+                if(snakeY == 0) { //橫
+                    appleAngle = Math.atan(Math.abs(snakeY-appleY)/Math.abs(snakeX-appleX))
+                    isfb = (snakeX+nextX > gridSize || snakeX+nextX < 0) ? 1 : 0
+                    islb = (snakeY-1 < 0 || snakeY+1 > gridSize) ? 1 : 0
+                    isrb = (snakeY-1 < 0 || snakeY+1 > 50) ? 1 : 0
+                } else { //直
+                    appleAngle = Math.atan(Math.abs(snakeX-appleX)/Math.abs(snakeY-appleY))
+                    isfb = (snakeY+nextY >gridSize || snakeY+nextY <0) ? 1 : 0
+                    islb = (snakeX-1 < 0 || snakeX+1 > gridSize) ? 1 : 0
+                    isrb = (snakeX-1 < 0 || snakeX+1 > gridSize) ? 1 : 0
+                }
+            }
+
+            function predictMove() {
+                var inp = [[lw, rw, uw, dw, appleDistance, isfb, islb, isrb, appleAngle],]
+                var a1 = matrixMultiplication(inp, w1)
+                // console.log("w1a1", a1)
+                // .map(function(ele){
+                //     return Math.tanh(ele)
+                // })
+                var a2 = matrixMultiplication(a1, w2)
+                // console.log("w2a2", a2)
+
+                // .map(function(ele){
+                //     return Math.tanh(ele)
+                // })
+                var a3 = softmax(matrixMultiplication(a2, w3))
+                // console.log("w3a3",a3)
+                var opt = a3[0].indexOf(Math.max(...a3[0]))-1
+                // console.log(a3[0], Math.max(...a3[0]),a3[1], a3.indexOf(a3[1]))
+                return opt
+            }
+
+            function softmax(arr) {
+                return arr.map(function(values,index) { 
+                    var ud = arr[0].map(function(y){ 
+                        return Math.exp(y) 
+                    }).reduce(function(a,b){ 
+                        return a+b 
+                    })
+                    return values.map(function(value){
+                        return Math.exp(value) / ud
+                    })
+                })
+            }
+
+            function matrixMultiplication(a,b){
+                return a.map(function(row){
+                    return b[0].map(function(_,i){
+                        return row.reduce(function(sum,cell,j){
+                            return sum+cell*b[j][i];
+                        },0);
+                    });
+                });
+            }
+
+            // draw
+            function draw() {
+                getSnakeInput()
+                if (gameState ==1){
+                    var dir = predictMove()
+                    
+                    if(stepCount>MAX_STEP){
+                        score+=stepCount*appleCount
+                        gameStop()
+                    }else{
+                        stepCount+=1
+                    }
+                    // console.log(stepCount)
+                    if(dir == 0){
+                        nextX = nextX
+                        nextY = nextY
+                    } else if (dir == -1) {
+                        temp = nextX
+                        nextX = nextY
+                        nextY = -temp
+                    } else if (dir == 1) {
+                        temp = nextX
+                        nextX = -nextY
+                        nextY = temp
+                    }
+                }
+                // move snake in next pos
+                snakeX += nextX;
+                snakeY += nextY;
+
+                // snake over game world?
+                if (snakeX < 0) {
+                    // snakeX = gridSize - 1;
+                    score -= 5000
+                    gameStop()
+                }
+                if (snakeX > gridSize - 1) {
+                    // snakeX = 0;
+                    score -= 5000
+                    gameStop()
+                }
+
+                if (snakeY < 0) {
+                    // snakeY = gridSize - 1;
+                    score -= 5000
+                    gameStop()
+                }
+                if (snakeY > gridSize - 1) {
+                    // snakeY = 0;
+                    score -= 5000
+                    gameStop()
+                }
+
+                //snake bite apple?
+                if (snakeX == appleX && snakeY == appleY) {
+                    tailSize++;
+                    appleCount++
+                    score += 2500
+                    MAX_STEP+=600
+                    appleX = Math.floor(Math.random() * gridSize);
+                    appleY = Math.floor(Math.random() * gridSize);
+                }
+
+                //paint background
+                ctx.fillStyle = "black";
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+                // paint snake
+                ctx.fillStyle = "green";
+                for (var i = 0; i < snakeTrail.length; i++) {
+                    ctx.fillRect(
+                        snakeTrail[i].x * tileSize,
+                        snakeTrail[i].y * tileSize,
+                        tileSize,
+                        tileSize
+                    );
+
+                    //snake bites it's tail?
+                    if (snakeTrail[i].x == snakeX && snakeTrail[i].y == snakeY && gameState==1) {
+                        // tailSize = defaultTailSize;
+                        score-=5000
+                        gameStop()
+                    }
+                }
+
+                // paint apple
+                ctx.fillStyle = "red";
+                ctx.fillRect(appleX * tileSize, appleY * tileSize, tileSize, tileSize);
+
+                //set snake trail
+                snakeTrail.push({ x: snakeX, y: snakeY });
+                while (snakeTrail.length > tailSize) {
+                    snakeTrail.shift();
+                }
+            }
+
+            // input
+            // function keyDownEvent(e) {
+            //     switch (e.keyCode) {
+            //         case 37:
+            //         nextX = -1;
+            //         nextY = 0;
+            //         break;
+            //         case 38:
+            //         nextX = 0;
+            //         nextY = -1;
+            //         break;
+            //         case 39:
+            //         nextX = 1;
+            //         nextY = 0;
+            //         break;
+            //         case 40:
+            //         nextX = 0;
+            //         nextY = 1;
+            //         break;
+            //     }
+            // }
+            async function autoStrat(){
+                await onClickReset()
+                await onClickStart()
+            }
+
+            
+
+            function onClickReset(){
+                if(gameState == 3){
+                    snakeTrail=[]
+                    snakeX = 10
+                    snakeY = 10
+                    nextX = 0;
+                    nextY = 0;      
+                    gameClock = setInterval(draw, 1000 / 16);
+                    gameState = 0
+                }
+            }
+
+            function onClickStart(){
+                config = document.getElementById('state')
+                if(gameState==0){
+                    gameState = 1
+                    fetch(`${window.origin}/snake/gene` ,{
+                        method:'GET',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        }
+                    }).then(res => {
+                        if(res.status != 200){
+                            gameState=2
+                        }
+                        return res.json()
+                    }).then(response => {
+                        if(response.index != -1){
+                            weight = response.weight
+                            w1 = weight[0]
+                            w2 = weight[1]
+                            w3 = weight[2]
+                            popIndex = response.index
+                            generation = response.generation
+                            config.textContent = `popIndex: ${popIndex}  generation: ${generation}`
+                            gameState = 1
+                            nextX = 1;
+                            nextY = 0;
+                            score=0
+                            stepCount=0
+                            MAX_STEP=1800
+                            overClock = setInterval(timeOut, 60000);
+                        } else {
+                            config.textContent = `please wait`
+                            gameState=2
+                            autoClock = setTimeout(onClickStart, 90000)
+                        }
+                    })
+                }
+                
+            }
+        </script>
+</body>
+</html>
