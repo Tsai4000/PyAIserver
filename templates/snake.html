@@ -27,8 +27,42 @@
             var appleCount
             var score
             var popIndex, generation
-            var MAX_STEP = 1800, stepCount = 0
+            var MAX_STEP = 1200, stepCount = 0, deadCount=0, deadCountCount=0
             var autoClock
+
+            function initArg(){
+                gameState=0;
+                appleAngle=0
+                isfb=0
+                islb=0 
+                isrb=0
+                lw=0
+                rw=0
+                uw=0
+                dw=0
+                appleDistance=0
+                appleCount=0
+                nextX = 1;
+                nextY = 0;
+                score=0
+                stepCount=0
+                MAX_STEP=1200
+
+                tileSize = 10
+                gridSize = 50
+                nextX = (nextY = 0);
+
+                // snake
+                defaultTailSize = 3;
+                tailSize = defaultTailSize;
+                snakeTrail = [];
+                snakeX = (snakeY = 10);
+
+                // apple
+                appleX = Math.floor(Math.random() * gridSize);
+                appleY = Math.floor(Math.random() * gridSize);
+
+            }
 
             window.onload = function() {
                 canvas = document.getElementById("canvas");
@@ -102,6 +136,18 @@
                 score = 0
             }
 
+            function deadEndCount(dir){
+                deadCount += dir
+                deadCountCount++
+                if(deadCountCount == 8 && Math.abs(deadCount)==8){
+                    deadCountCount = 0
+                    deadCount = 0
+                    score -= 3000
+                    gameStop()
+                }
+                
+            }
+
             function getSnakeInput() {
                 appleDistance = Math.sqrt(Math.pow((snakeX-appleX),2)+Math.pow((snakeY-appleY),2))
                 lw = snakeX/gridSize
@@ -169,7 +215,7 @@
                 getSnakeInput()
                 if (gameState ==1){
                     var dir = predictMove()
-                    
+                    deadEndCount(dir)
                     if(stepCount>MAX_STEP){
                         score+=stepCount*appleCount
                         gameStop()
@@ -222,7 +268,7 @@
                     tailSize++;
                     appleCount++
                     score += 2500
-                    MAX_STEP+=600
+                    MAX_STEP+=300
                     appleX = Math.floor(Math.random() * gridSize);
                     appleY = Math.floor(Math.random() * gridSize);
                 }
@@ -302,7 +348,7 @@
 
             function onClickStart(){
                 config = document.getElementById('state')
-                if(gameState==0){
+                if(gameState==0 || gameState==2){
                     gameState = 1
                     fetch(`${window.origin}/snake/gene` ,{
                         method:'GET',
@@ -328,12 +374,14 @@
                             nextY = 0;
                             score=0
                             stepCount=0
-                            MAX_STEP=1800
+                            deadCountCount = 0
+                            deadCount = 0   
+                            MAX_STEP=1200
                             overClock = setInterval(timeOut, 60000);
                         } else {
                             config.textContent = `please wait`
                             gameState=2
-                            autoClock = setTimeout(onClickStart, 90000)
+                            autoClock = setTimeout(onClickStart, 10000)
                         }
                     })
                 }
