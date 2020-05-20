@@ -54,7 +54,7 @@ def gGene():
 
         return make_response(jsonify({"index": playerQ-1, "generation": generation[0]['generation'], "weight": reshapeMat(weight[0]['weight'])}), 200)
 
-    elif(playerQ == POP_MAX and resPlayerQ == POP_MAX):
+    elif(playerQ == POP_MAX and resPlayerQ >= POP_MAX):
         weights=[]
         allWeight = myclient['dbtSnake']['geneWeight'].find().sort('score')
         generation = myclient['dbtSnake']['geneLog'].find().sort([("_id",-1)]).limit(1)[0]
@@ -78,12 +78,12 @@ def gGene():
         resPlayerQ = 0
         playerQList = [False for i in range(POP_MAX)]
         return make_response(jsonify({"index": 0, "generation": generation["generation"], "weight": reshapeMat(newGene[0])}), 200)
-    elif(playerQ == POP_MAX and resPlayerQ <= POP_MAX):
+    elif(playerQ == POP_MAX and resPlayerQ < POP_MAX):
         unfinish = [index for index, i in enumerate(playerQList) if i is False][0]
         weight = myclient['dbtSnake']['geneWeight'].find({"weightIndex": unfinish})
         generation = myclient['dbtSnake']['geneLog'].find().sort([("_id",-1)]).limit(1)
         # playerQ+=1
-        # print(playerQ,resPlayerQ, file=sys.stderr)
+        print(playerQ,resPlayerQ, file=sys.stderr)
 
         return make_response(jsonify({"index": unfinish, "generation": generation[0]['generation'], "weight": reshapeMat(weight[0]['weight'])}), 200)
 
