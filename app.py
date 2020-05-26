@@ -1,5 +1,6 @@
 import pymongo
 import sys
+import os
 import time
 sys.path.insert(1, './AIutil/kannada')
 sys.path.insert(1, './AIutil/snake')
@@ -10,21 +11,21 @@ from flask import Flask, jsonify, request, render_template, make_response
 
 app = Flask(__name__)
 myclient = None
+geneWeight = None
+geneLog = None
+
 playerQ = 0
 resPlayerQ = 0
 POP_MAX = 50
 playerQList = [False for i in range(POP_MAX)]
 def initDB():
-    global myclient
+    global myclient, geneWeight, geneLog
     myclient = pymongo.MongoClient("mongodb://localhost:27017/")
-
-    dblist = myclient.list_database_names()
-    if "pyAI" in dblist:
-        print("已存在！")
-        mydb = myclient['pyAI']
-        collist = mydb.list_collection_names()
-        if "NN" in collist:  
-            print("集合已存在！")
+    geneWeight = myclient['dbtSnake']['geneWeight']
+    geneLog = myclient['dbtSnake']['geneLog']
+    if None in [myclient, geneWeight, geneLog]:
+        print("monogo Failed")
+        os._exit(0)
     print("mongo init success")
 
 @app.route('/')
@@ -34,7 +35,6 @@ def home():
 @app.route('/snake')
 def snake():
     global playerQ
-    # playerQ+=1
     return render_template('snake.html')
 
 @app.route('/predict', methods=['POST'])
@@ -45,10 +45,10 @@ def bPredict():
 
 @app.route('/snake/gene', methods=['GET'])
 def gGene():
-    global myclient, playerQ, resPlayerQ, playerQList
+    global myclient, playerQ, resPlayerQ, playerQList, geneWeight, geneLog
     if(playerQ < POP_MAX):
-        weight = myclient['dbtSnake']['geneWeight'].find({"weightIndex": playerQ})
-        generation = myclient['dbtSnake']['geneLog'].find().sort([("_id",-1)]).limit(1)
+        weight = geneWeight.find({"weightIndex": playerQ})
+        generation = geneLog.find().sort([("_id",-1)]).limit(1)
         playerQ+=1
         print(playerQ,resPlayerQ, file=sys.stderr)
 
@@ -57,8 +57,8 @@ def gGene():
     elif(playerQ == POP_MAX and resPlayerQ == POP_MAX):
         playerQ+=1
         weights=[]
-        allWeight = myclient['dbtSnake']['geneWeight'].find().sort('score')
-        generation = myclient['dbtSnake']['geneLog'].find().sort([("_id",-1)]).limit(1)[0]
+        allWeight = geneWeight.find().sort('score')
+        generation = geneLog.find().sort([("_id",-1)]).limit(1)[0]
         for weight in allWeight:
             weights.append(weight['weight'])
         newGene = calNextGene(weights)
@@ -66,23 +66,23 @@ def gGene():
             "generation": generation['generation']+1,
             'weight': weights
         }
-        myclient['dbtSnake']['geneLog'].insert_one(geneLog)
-        myclient['dbtSnake']['geneWeight'].delete_many({})
+        geneLog.insert_one(geneLog)
+        geneWeight.delete_many({})
         for index, gene in enumerate(newGene):
             weight = {
                 "weightIndex": index,
                 "weight": gene.astype(float).tolist(),
                 "score": -5000
             }
-            myclient['dbtSnake']['geneWeight'].insert_one(weight)
+            geneWeight.insert_one(weight)
         playerQ = 1
         resPlayerQ = 0
         playerQList = [False for i in range(POP_MAX)]
         return make_response(jsonify({"index": 0, "generation": generation["generation"], "weight": reshapeMat(newGene[0])}), 200)
     elif(playerQ == POP_MAX and resPlayerQ < POP_MAX):
         unfinish = [index for index, i in enumerate(playerQList) if i is False][0]
-        weight = myclient['dbtSnake']['geneWeight'].find({"weightIndex": unfinish})
-        generation = myclient['dbtSnake']['geneLog'].find().sort([("_id",-1)]).limit(1)
+        weight = geneWeight.find({"weightIndex": unfinish})
+        generation = geneLog.find().sort([("_id",-1)]).limit(1)
         # playerQ+=1
         print(playerQ,resPlayerQ, file=sys.stderr)
 
@@ -93,11 +93,11 @@ def gGene():
 
 @app.route('/snake/gene', methods=['POST'])
 def pGene():
-    global myclient, playerQ, resPlayerQ, playerQList
+    global myclient, playerQ, resPlayerQ, playerQList, geneWeight, geneLog
     req = request.get_json()
-    generation = myclient['dbtSnake']['geneLog'].find().sort([("_id",-1)]).limit(1)[0]
+    generation = geneLog.find().sort([("_id",-1)]).limit(1)[0]
     if(req['generation'] == generation['generation']):
-        weight = myclient['dbtSnake']['geneWeight'].update_one({"weightIndex": req['index']}, {"$set": {"score": req['score']}})
+        weight = geneWeight.update_one({"weightIndex": req['index']}, {"$set": {"score": req['score']}})
         playerQList[req['index']] = True
         if(resPlayerQ!=POP_MAX):
             resPlayerQ+=1
@@ -108,7 +108,7 @@ def pGene():
 # @app.route('/createLog', methods=['GET'])
 # def sss():
 #     global myclient
-#     myclient['dbtSnake']['geneLog'].insert_one({"generation":0})
+#     geneLog.insert_one({"generation":0})
 
 # @app.route('/create', methods=['GET'])
 # def ggg():
@@ -126,7 +126,7 @@ def pGene():
 #             "weight": pop.astype(float).tolist(),
 #             "score": -5000
 #         }
-#         myclient['dbtSnake']['geneWeight'].insert_one(ge)
+#         geneWeight.insert_one(ge)
 
 
 initDB()
